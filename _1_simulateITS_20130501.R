@@ -1,16 +1,12 @@
 ## Program to simulate explore the correct estimation of Interrupted-times-series designs ----
+## this program is for experimentation to test things before implementing them in the function program
 
-## next things to do ====
-# wrap code in a function ####
-# the return value of the function should be the p-value ####
-# implement the function in something like a loop that continuously stores the p-values ####
-# estimate the p-values based on correct model specifications with 2 schools and no cohort effect (make sure that I have enough power) ####
-# introduce cohort effect and see how this affects the estimation ####
-# use multi-level models to estimate impact and see if they can handle the estimates better ####
-# experiment with models with multiple comparison schools and treatment schools with nested student effects and cohort effects ####
 
 
 rm(list=ls())
+library(lme4)
+library(arm)
+
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ## specify parameter to generate data ====
@@ -23,7 +19,7 @@ end.yr <- 2012
 
 # number of treatment and control schools
 n.treatment.schools <- 1
-n.control.schools <- 1
+n.control.schools <- 10
 
 # vector of treatment years (for more than one year impact I think I have to adjust the code below)
 impact.yrs <- c(2012)
@@ -88,16 +84,17 @@ y <- true.score + overall.impact.vector + treatment.impact.vector + stu.error + 
 
 cbind(rep.yr,c.yr,treatment, impact.coeff, school.id, y, true.score, overall.impact.vector, treatment.impact.vector, stu.error, sch.error, coh.error)
 
-
+## standard regression model
 summary(lm(y ~ c.yr * treatment + impact.coeff * treatment))
 
 
 ## 
-lmer (y ~ c.yr * treatment + impact.coeff * treatment + (1 | factor(rep.yr)))
+
+
+lmer (y ~ c.yr * treatment + impact.coeff * treatment + (1 | factor(rep.yr * school.id) ))
+
 
 ## empty model
-lmer (y ~ 1 + (1 | factor(rep.yr)  ))
-
-M0 <- lmer (y ~ 1 + (1 | county))
+M0 <- lmer (y ~ 1 + (1 | c.yr))
 display (M0)
 

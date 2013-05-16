@@ -1,13 +1,17 @@
 ## Program to simulate explore the correct estimation of Interrupted-times-series designs ----
 
 ## next things to do ====
-# wrap code in a function ####
-# the return value of the function should be the p-value ####
-# implement the function in something like a loop that continuously stores the p-values ####
-# estimate the p-values based on correct model specifications with 2 schools and no cohort effect (make sure that I have enough power) ####
-# introduce cohort effect and see how this affects the estimation ####
-# use multi-level models to estimate impact and see if they can handle the estimates better ####
+# make function more flexible by allowing to pass all arguments as variables
 # experiment with models with multiple comparison schools and treatment schools with nested student effects and cohort effects ####
+
+
+## function needed to calculate p-values with lmer package
+# http://blog.lib.umn.edu/moor0554/canoemoore/2010/09/lmer_p-values_lrt.html
+# currently we calculatea an approximate p-value based on a t-distribution
+
+
+
+
 
 ITS_sim <- function(){
   rm(list=ls())
@@ -23,7 +27,7 @@ ITS_sim <- function(){
   
   # number of treatment and control schools
   n.treatment.schools <- 1
-  n.control.schools <- 1
+  n.control.schools <- 10
   
   # vector of treatment years (for more than one year impact I think I have to adjust the code below)
   impact.yrs <- c(2012)
@@ -38,7 +42,7 @@ ITS_sim <- function(){
   
   stu.error.sd <- 1
   sch.error.sd <- 1
-  coh.error.sd <- 1
+  coh.error.sd <- 0.5
   
   
   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -89,15 +93,25 @@ ITS_sim <- function(){
   cbind(rep.yr,c.yr,treatment, impact.coeff, school.id, y, true.score, overall.impact.vector, treatment.impact.vector, stu.error, sch.error, coh.error)
   
   
+  # extract p-value OLS regression
   .temp <- summary(lm(y ~ c.yr * treatment + impact.coeff * treatment))
-  .temp$coeff[6,4]
+  p.OLS <- .temp$coeff["treatment:impact.coeff","Pr(>|t|)"]
+  
+  # extract p-values MLM model
+  
+  .temp.mlm <- display(lmer (y ~ c.yr * treatment + impact.coeff * treatment + (1 | factor(rep.yr * school.id) )))
+  p.MLM <- pt(-abs(.temp.mlm$t.value["treatment:impact.coeff"]),df=100)*2
+  
+  
+  c(p.OLS,p.MLM)
 
 }
 
+# save p-values of simulation
+pValues <- replicate(n = 1000, expr = ITS_sim())
+# change row-names
+row.names(pValues) <- c("OLS","MLM")
+# calculate significant results
+sig <- apply(pValues,c(1,2),function(x) (x<0.05)*1 ) 
 
-pValues <- replicate(n = 500, expr = ITS_sim())
-pValues
-sig <- pValues
-sig[sig>0.05] <- 0
-sig[sig>0] <- 1
-table(sig)
+rowMeans(sig)
