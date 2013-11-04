@@ -1,13 +1,8 @@
 ## Program to simulate explore the correct estimation of Interrupted-times-series designs ----
 
-
-
   library(lme4)
   library(arm)
   
-
-
-
 createDataset <- function(
     ## specify parameter to generate data ====
   # cohort size / number of students per year and school
