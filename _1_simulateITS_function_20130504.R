@@ -1,50 +1,51 @@
 ## Program to simulate explore the correct estimation of Interrupted-times-series designs ----
 
-## next things to do ====
-# make function more flexible by allowing to pass all arguments as variables
-# experiment with models with multiple comparison schools and treatment schools with nested student effects and cohort effects ####
 
 
-## function needed to calculate p-values with lmer package
-# http://blog.lib.umn.edu/moor0554/canoemoore/2010/09/lmer_p-values_lrt.html
-# currently we calculatea an approximate p-value based on a t-distribution
-
-
-
-
-
-ITS_sim <- function(){
-  rm(list=ls())
+  library(lme4)
+  library(arm)
   
-  #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  ## specify parameter to generate data ====
+
+
+
+createDataset <- function(
+    ## specify parameter to generate data ====
   # cohort size / number of students per year and school
-  stu.per.yr <- 100
+  stu.per.yr ,
   
   # first and last year of data generation
-  start.yr <- 2005
-  end.yr <- 2012
+  start.yr ,
+  end.yr ,
   
   # number of treatment and control schools
-  n.treatment.schools <- 1
-  n.control.schools <- 10
+  n.treatment.schools ,
+  n.control.schools ,
   
   # vector of treatment years (for more than one year impact I think I have to adjust the code below)
-  impact.yrs <- c(2012)
+  impact.yrs ,
   
   # create a centered year variable so that the intercept of the ITS is more meaningful
-  center.yr <- 2011
+  center.yr ,
   
   # model parameters for the data generation
-  slope <- 1
-  overall.impact <- 0.5
-  treatment.impact <- 0.0
+  slope ,
+  overall.impact ,
+  treatment.impact ,
   
-  stu.error.sd <- 1
-  sch.error.sd <- 1
-  coh.error.sd <- 0.5
+  stu.error.sd ,
+  sch.error.sd ,
+  coh.error.sd 
   
+  ){
+
   
+  end.yr = end.yr
+  start.yr = start.yr
+  n.treatment.schools = n.treatment.schools
+  
+
+ 
+ 
   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   ## variables that are needed but that can be calculated based on the input above ====
   start.id <- 1
@@ -84,31 +85,56 @@ ITS_sim <- function(){
   
   y <- true.score + overall.impact.vector + treatment.impact.vector + stu.error + sch.error + coh.error
   
-  
+  schoolYearRandomEffect <- factor(rep.yr * school.id) 
   
   
   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  ## check of generation looks correct ====
+  ## check if generation looks correct ====
   
-  cbind(rep.yr,c.yr,treatment, impact.coeff, school.id, y, true.score, overall.impact.vector, treatment.impact.vector, stu.error, sch.error, coh.error)
+  data <- as.data.frame(cbind(rep.yr,c.yr,treatment, impact.coeff, school.id,   schoolYearRandomEffect, y, true.score, overall.impact.vector, treatment.impact.vector, stu.error, sch.error, coh.error))
+  
+  return(data)
+  
+
+
+}
+
+analyzeITSdataset <- function(dataSet){
+    # extract p-value OLS regression
   
   
-  # extract p-value OLS regression
-  .temp <- summary(lm(y ~ c.yr * treatment + impact.coeff * treatment))
+  .temp <- summary(lm(y ~ c.yr * treatment + impact.coeff * treatment, data = dataSet))
   p.OLS <- .temp$coeff["treatment:impact.coeff","Pr(>|t|)"]
   
   # extract p-values MLM model
   
-  .temp.mlm <- display(lmer (y ~ c.yr * treatment + impact.coeff * treatment + (1 | factor(rep.yr * school.id) )))
+  .temp.mlm <- display( lmer (y ~ c.yr * treatment + impact.coeff * treatment + (1 | schoolYearRandomEffect ), data = dataSet ) )
   p.MLM <- pt(-abs(.temp.mlm$t.value["treatment:impact.coeff"]),df=100)*2
   
   
-  c(p.OLS,p.MLM)
-
+  return(c(p.OLS,p.MLM))
+  
 }
 
-# save p-values of simulation
-pValues <- replicate(n = 1000, expr = ITS_sim())
+
+
+
+
+
+## generate a dataset
+ s1 <- createDataset(stu.per.yr = 100, start.yr = 2005, end.yr = 2012, n.treatment.schools = 1, n.control.schools = 1, impact.yrs = c(2012),
+  center.yr = 2011, slope = 1, overall.impact = 0.5, treatment.impact = 1.0, stu.error.sd = 0.5, sch.error.sd = 0,
+  coh.error.sd = 0)
+
+analyzeITSdataset(s1)
+
+
+
+# generate datasets and save p-values of simulation
+pValues <- replicate(n = 10, expr =analyzeITSdataset( createDataset(stu.per.yr = 100, start.yr = 2005, end.yr = 2012, n.treatment.schools = 1, n.control.schools = 1, impact.yrs = c(2012),
+  center.yr = 2011, slope = 1, overall.impact = 0.5, treatment.impact = 1.0, stu.error.sd = 0.5, sch.error.sd = 1,
+  coh.error.sd = 1) ))
+
 # change row-names
 row.names(pValues) <- c("OLS","MLM")
 # calculate significant results
