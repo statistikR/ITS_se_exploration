@@ -99,6 +99,8 @@ createDataset <- function(
 
 }
 
+## this function compares the SEs of the impact estimates between MLM and OLS estimation
+
 analyzeITSdataset <- function(dataSet){
     # extract p-value OLS regression
   
